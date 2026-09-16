@@ -1,0 +1,511 @@
+:root {
+    --gold: #c5a059;
+    --dark: #1a1a1a;
+    --light: #f9f9f9;
+    --grey: #888;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #fff;
+    margin: 0;
+    color: var(--dark);
+    overflow-x: hidden; /* Evita barra de rolagem horizontal indesejada */
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+}
+
+.logo img {
+    height: 50px; /* Ajuste a altura conforme necessário */
+    width: auto;  /* Mantém a proporção da imagem */
+    display: block;
+}
+
+.cart-icon {
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+#cart-count {
+    background: var(--gold);
+    color: white;
+    border-radius: 50%;
+    padding: 2px 7px;
+    font-size: 0.8rem;
+    vertical-align: top;
+    margin-left: -5px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 30px;
+    padding: 0 20px;
+}
+
+.product-card {
+    text-align: center;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+}
+
+.product-card img {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    background-color: var(--light);
+}
+
+.product-card h3 {
+    font-family: 'montserrat', sans-serif;
+    margin: 15px 0 5px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.price {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(5px);
+    overflow-y: auto; /* Permite rolar o modal se o conteúdo for grande */
+}
+
+.modal-content {
+    background: white;
+    width: 90%;
+    max-width: 900px;
+    margin: 5vh auto;
+    padding: 40px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.close {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--grey);
+}
+
+.modal-body {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+.modal-left, .modal-right { flex: 1; width: 50%; }
+
+/* ESTILOS ESPECÍFICOS DO NOVO CARROSSEL (SWIPER) */
+.swiper {
+    width: 100%;
+    height: 450px; /* Altura fixa para manter elegância */
+    background-color: var(--light);
+}
+
+.swiper-slide {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.swiper-slide img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Mostra a foto inteira sem cortar */
+}
+
+/* Customizando as cores do Swiper para Dourado */
+.swiper-button-next, .swiper-button-prev {
+    color: var(--gold) !important;
+    transform: scale(0.7); /* Setas levemente menores e mais elegantes */
+}
+
+.swiper-pagination-bullet-active {
+    background: var(--gold) !important;
+}
+/* Coloque isso junto com os estilos do admin no seu index.html se quiser organizar as setinhas */
+.admin-move-btn { color: #0bcbe2; font-weight: bold; }
+.admin-move-btn:hover { background: #0bcbe2; color: white; }
+.preview-image-wrapper { position: relative; width: 60px; height: 60px; }
+.remove-photo-badge { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; border: 1px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+/* Estilos da direita do modal */
+#m-title { font-family: 'montserrat', sans-serif; font-weight: 600; margin-top: 0; }
+#m-desc { color: var(--grey); font-size: 0.9rem; line-height: 1.6; margin: 20px 0; }
+
+.options { margin-bottom: 15px; }
+
+.options label { 
+    display: block; 
+    font-size: 0.8rem; 
+    letter-spacing: 1px; 
+    text-transform: uppercase; 
+    color: var(--grey); 
+    margin-bottom: 5px;
+}
+
+/* Modificado: Adicionado border-radius e transition */
+.options select, .options input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #eee; /* Aumentei um pouquinho para 2px para o efeito ficar mais bonito */
+    border-radius: 8px;     /* Arredonda as bordas */
+    font-family: 'Montserrat', sans-serif;
+    outline: none;          /* Remove a borda padrão escura do navegador */
+    background-color: #fff;
+    transition: all 0.3s ease; /* Faz o brilho verde aparecer suavemente */
+}
+
+/* Novo: Efeito de clique / foco com a borda verde brilhante */
+.options select:focus, .options input:focus {
+    border-color: linear-gradient(90deg, rgba(11, 191, 226, 1) 0%,rgba(9, 188, 169, 1) 100%); /* Muda a borda para verde */
+    box-shadow: 0 0 12px rgba(11, 191, 226, 1); /* Cria o efeito de brilho neon */
+}
+
+.actions { margin-top: 30px; }
+
+.btn-add, .btn-checkout {
+    background: linear-gradient(90deg, rgba(11, 191, 226, 1) 0%,rgba(9, 188, 169, 1) 100%);
+    margin-top: 05px;
+    color: white;
+    border: 1px solid var(--dark);
+    padding: 15px;
+    width: 100%;
+    cursor: pointer;
+    letter-spacing: 2px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.btn-add:hover, .btn-checkout:hover { background: linear-gradient(90deg, rgb(7, 143, 170) 0%,rgb(4, 117, 106) 100%); }
+
+.btn-add, .btn-login {
+    background: linear-gradient(90deg, rgba(11, 191, 226, 1) 0%,rgba(9, 188, 169, 1) 100%);
+    margin-top: 20px;
+    color: white;
+    border: 1px solid var(--dark);
+    padding: 15px;
+    width: 100%;
+    cursor: pointer;
+    letter-spacing: 2px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.btn-add:hover, .btn-login:hover { background: linear-gradient(90deg, rgb(7, 143, 170) 0%,rgb(4, 117, 106) 100%); }
+
+
+.btn-wa {
+    display: block;
+    text-align: center;
+    border: 1px solid var(--dark);
+    color: var(--dark);
+    padding: 13px;
+    margin-top: 10px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+}
+
+.btn-wa:hover { background: linear-gradient(90deg, rgb(6, 104, 124) 0%,rgb(2, 87, 78) 100%); color: white; }
+
+/* Carrinho Sidebar */
+.sidebar {
+    position: fixed;
+    right: -400px;
+    top: 0;
+    width: 350px;
+    height: 100%;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    transition: 0.4s;
+    padding: 20px;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+}
+/* Estilo para o botão de fechar o carrinho */
+.close-cart {
+    position: absolute;
+    left: 20px; /* Posicionado à esquerda para não conflitar com a barra de rolagem */
+    top: 15px;
+    font-size: 30px;
+    cursor: pointer;
+    color: var(--grey);
+    transition: color 0.3s;
+    line-height: 1;
+}
+
+.close-cart:hover {
+    color: var(--dark);
+}
+
+/* Ajuste no título do carrinho para não sobrepor o X */
+.sidebar h3 {
+    font-family: 'Montserrat', sans-serif;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-top: 10px; /* Espaço para o X acima */
+}
+
+.sidebar.active { right: 0; }
+/* Carrinho Sidebar - Atualizado */
+.sidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 350px;
+    height: 100%;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    
+    /* O segredo está aqui: empurramos 100% para a direita */
+    transform: translateX(100%); 
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Quando o carrinho tiver a classe active, ele volta para a posição original */
+.sidebar.active {
+    transform: translateX(0);
+}
+/* Estilo Comum para os botões de fechar (X) */
+.close-modal, .close-cart {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 35px; /* Tamanho maior para facilitar o toque no celular */
+    line-height: 1;
+    cursor: pointer;
+    color: var(--dark);
+    z-index: 1010; /* Garante que fique acima de tudo */
+    padding: 10px; /* Área de toque maior */
+    transition: transform 0.2s;
+}
+
+/* Responsividade: Mobile Chic (Ajustado) */
+@media (max-width: 768px) {
+    /* 1. Grade de produtos na home: 2 por linha */
+    .container {
+        grid-template-columns: 1fr 1fr; 
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .product-card img {
+        height: 220px; /* Altura ajustada para telas menores */
+    }
+
+    /* 2. Modal de Produto: Empilhado (Foto em cima, Texto embaixo) */
+    .modal-body {
+        flex-direction: column; /* Força o empilhamento vertical */
+        gap: 20px;
+    }
+
+    .modal-left, .modal-right {
+        width: 100%; /* Ocupam a largura total no mobile */
+    }
+
+    .swiper {
+        height: 350px; /* Altura generosa para a foto no topo */
+    }
+
+    .modal-content {
+        width: 92%;
+        margin: 2vh auto;
+        padding: 20px;
+        max-height: 90vh; /* Garante que o modal não suma da tela */
+        overflow-y: auto; /* Permite rolar para ler a descrição */
+        border-radius: 8px;
+    }
+
+    /* Ajuste de textos no Mobile */
+    #m-title {
+        font-size: 1.4rem;
+        margin-top: 10px;
+    }
+
+    #m-price {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+
+    /* 3. Carrinho Mobile */
+    .sidebar {
+        width: 100% !important;
+        transform: translateX(100%);
+        left: 30px;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+}
+/* Container que segura os dois preços */
+.price-container-grid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+/* Bloco individual (Nome + Valor) */
+.price-block {
+    display: flex;
+    flex-direction: column; /* Coloca um em cima do outro */
+    align-items: center;
+}
+
+/* Nome: Varejo ou Atacado */
+.price-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #888;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+/* Valor: O número em si */
+.price-value {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #b8860b; /* Cor dourada/marrom da sua imagem */
+}
+
+/* Divisor | entre os preços */
+.price-divider {
+    color: #ccc;
+    font-weight: 300;
+    margin-top: 10px; /* Alinha com o valor */
+}
+
+/* ==========================================
+   ESTILOS DO MODAL DE PREÇOS
+   ========================================== */
+.custom-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.custom-price-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 350px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+    font-family: sans-serif;
+}
+
+.custom-price-card h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 1.3rem;
+}
+
+.custom-price-card p {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.custom-price-card .input-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.custom-price-card label {
+    display: block;
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #444;
+    margin-bottom: 5px;
+}
+
+.custom-price-card input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border 0.3s;
+}
+
+.custom-price-card input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.price-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.price-modal-actions button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.btn-cancel {
+    background: #eee;
+    color: #333;
+}
+
+.btn-cancel:hover {
+    background: #ddd;
+}
+
+.btn-save {
+   background: linear-gradient(90deg, rgba(11, 191, 226, 1) 0%,rgba(9, 188, 169, 1) 100%);
+    color: #fff;
+}
+
+.btn-save:hover {
+    background: linear-gradient(90deg, rgba(11, 191, 226, 1) 0%,rgba(9, 188, 169, 1) 100%);
+}

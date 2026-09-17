@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atualizar Preços | PAULO RENATO REPRESENTAÇÕES</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Montserrat', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; color: #222; }
+  h1 { font-size: 1.3rem; margin-bottom: 4px; }
+  p.sub { color: #666; margin-top: 0; font-size: 0.9rem; }
+  .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .card .info { flex: 1; min-width: 200px; }
+  .card .nome-alvo { font-weight: 600; }
+  .status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .status.pendente { background: #eee; color: #666; }
+  .status.encontrado { background: #e0f7f5; color: #09827a; }
+  .status.nao-encontrado { background: #fdeaea; color: #c0392b; }
+  .status.novo { background: #eaf1fd; color: #1a56c4; }
+  .status.ok { background: #e2f8e2; color: #2a8a2a; }
+  .status.erro { background: #fdeaea; color: #c0392b; }
+  select, input[type=text], input[type=number] { padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; }
+  .preco-de { color: #999; text-decoration: line-through; font-size: 0.85rem; }
+  .preco-para { color: #09827a; font-weight: 700; }
+  #barra { position: sticky; top: 0; background: #fff; padding: 14px 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; z-index: 10; }
+  button { background: linear-gradient(90deg, #0bcbe2 0%, #09bca9 100%); color: #fff; border: none; padding: 12px 22px; border-radius: 6px; font-weight: 700; cursor: pointer; letter-spacing: .5px; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secundario { background: #eee; color: #555; }
+  #log { font-size: 0.8rem; color: #666; white-space: pre-wrap; margin-top: 10px; }
+  .secao-titulo { margin: 22px 0 8px; font-size: 1rem; color: #444; border-bottom: 2px solid #ddd; padding-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div id="barra">
+  <button id="btnCarregar" onclick="carregarCatalogo()">1. Carregar catálogo atual</button>
+  <button id="btnAplicar" onclick="aplicarTudo()" disabled>2. Aplicar todas as alterações</button>
+  <span id="resumoStatus" style="font-size:0.85rem;color:#666;"></span>
+</div>
+
+<h1>Atualização de preços — Toalhas Banho</h1>
+<p class="sub">Confira os produtos encontrados abaixo antes de aplicar. Itens em vermelho não foram encontrados automaticamente pelo nome e precisam ser escolhidos manualmente na lista, ou serão ignorados.</p>
+
+<div class="secao-titulo">Produtos existentes (troca de preço)</div>
+<div id="listaExistentes"></div>
+
+<div class="secao-titulo">Produtos novos (ainda não estão no catálogo)</div>
+<div id="listaNovos"></div>
+
+<div id="log"></div>
+
+<script>
+const API = "https://paulo-renato-toalhas.onrender.com/api/toalhas";
+
+// Alvos: nome a procurar (por aproximação) e o novo preço Varejo
+const ALVOS = [
+  { busca: "perola", novoVarejo: 11.00 },
+  { busca: "alice", novoVarejo: 13.70 },
+  { busca: "jasmim", novoVarejo: 14.70 },
+  { busca: "suprema", novoVarejo: 17.50 },
+  { busca: "sofia", novoVarejo: 14.70 },
+  { busca: "brenda", novoVarejo: 13.60 },
+  { busca: "colore", buscaExata: "banho colore", novoVarejo: 23.00 }, // evita bater com "kit colore"
+  { busca: "etamine", buscaExata: "banho etamine", novoVarejo: 10.00 },
+  { busca: "jade", buscaExata: "banho jade", novoVarejo: 10.00 },
+  { busca: "rubi", buscaExata: "banho rubi", novoVarejo: 12.00 },
+];
+
+// Produtos novos a cadastrar (ainda faltam nome definitivo de 3 deles — preencha e recarregue a página)
+const NOVOS = [
+  { nome: "Kit colore 2 peças", varejo: 70.00, atacado: 0 },
+  { nome: "(nome pendente — outro item etamine)", varejo: 20.00, atacado: 0 },
+  { nome: "(nome pendente — outro item jade)", varejo: 20.00, atacado: 0 },
+  { nome: "(nome pendente — outro item rubi)", varejo: 10.00, atacado: 0 },
+];
+
+let produtosAtuais = [];
+let matches = []; // { alvo, produto (ou null), novoPreco }
+
+function norm(s) {
+  return (s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+async function carregarCatalogo() {
+  const log = document.getElementById('log');
+  log.textContent = "Carregando catálogo (o servidor pode demorar até 1 minuto para acordar)...";
+  document.getElementById('btnCarregar').disabled = true;
+  try {
+    const resp = await fetch(API);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    produtosAtuais = await resp.json();
+    log.textContent = `Catálogo carregado: ${produtosAtuais.length} produtos encontrados.`;
+    montarMatches();
+    renderizarExistentes();
+    renderizarNovos();
+    document.getElementById('btnAplicar').disabled = false;
+  } catch (e) {
+    log.textContent = "Erro ao carregar o catálogo: " + e.message + "\nTente clicar em '1. Carregar catálogo atual' de novo — o servidor gratuito demora para acordar na primeira tentativa.";
+  }
+  document.getElementById('btnCarregar').disabled = false;
+}
+
+function encontrarProduto(alvo) {
+  const alvoNorm = norm(alvo.buscaExata || alvo.busca);
+  // 1. tenta match exato do termo completo dentro do nome
+  let candidatos = produtosAtuais.filter(p => norm(p.name).includes(alvoNorm));
+  if (alvo.buscaExata) {
+    // remove falsos positivos tipo "kit colore" quando buscamos "banho colore"
+    candidatos = candidatos.filter(p => norm(p.name).includes(norm(alvo.buscaExata)));
+  }
+  if (candidatos.length === 1) return candidatos[0];
+  if (candidatos.length > 1) return candidatos[0]; // pega o primeiro, usuário pode corrigir no seletor
+  return null;
+}
+
+function montarMatches() {
+  matches = ALVOS.map(alvo => ({ alvo, produto: encontrarProduto(alvo) }));
+}
+
+function renderizarExistentes() {
+  const div = document.getElementById('listaExistentes');
+  div.innerHTML = '';
+  matches.forEach((m, idx) => {
+    const encontrado = !!m.produto;
+    const precoAtual = encontrado ? (m.produto.variations?.[0]?.price ?? 0) : null;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="info">
+        <div class="nome-alvo">${m.alvo.buscaExata || m.alvo.busca}</div>
+        ${encontrado
+          ? `<span class="preco-de">R$ ${Number(precoAtual).toFixed(2)}</span> → <span class="preco-para">R$ ${m.alvo.novoVarejo.toFixed(2)}</span>`
+          : `<span style="color:#c0392b;">Nenhum produto correspondente encontrado automaticamente</span>`}
+      </div>
+      <select onchange="corrigirMatch(${idx}, this.value)" style="min-width:220px;">
+        <option value="">-- escolher manualmente --</option>
+        ${produtosAtuais.map(p => `<option value="${p.id}" ${encontrado && p.id === m.produto.id ? 'selected' : ''}>${p.name} (R$ ${(p.variations?.[0]?.price ?? 0)})</option>`).join('')}
+      </select>
+      <span class="status ${encontrado ? 'encontrado' : 'nao-encontrado'}" id="status-existente-${idx}">${encontrado ? 'encontrado' : 'não encontrado'}</span>
+    `;
+    div.appendChild(card);
+  });
+}
+
+function corrigirMatch(idx, produtoId) {
+  const prod = produtosAtuais.find(p => String(p.id) === String(produtoId));
+  matches[idx].produto = prod || null;
+  renderizarExistentes();
+}
+
+function renderizarNovos() {
+  const div = document.getElementById('listaNovos');
+  div.innerHTML = '';
+  NOVOS.forEach((n, idx) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="info">
+        <div class="nome-alvo">${n.nome}</div>
+        <span class="preco-para">Varejo R$ ${n.varejo.toFixed(2)}${n.atacado ? ' / Atacado R$ ' + n.atacado.toFixed(2) : ''}</span>
+      </div>
+      <span class="status novo" id="status-novo-${idx}">será criado</span>
+    `;
+    div.appendChild(card);
+  });
+}
+
+async function aplicarTudo() {
+  document.getElementById('btnAplicar').disabled = true;
+  const log = document.getElementById('log');
+  log.textContent = "Aplicando alterações...\n";
+
+  // 1. Atualiza preços existentes
+  for (let idx = 0; idx < matches.length; idx++) {
+    const m = matches[idx];
+    const statusEl = document.getElementById('status-existente-' + idx);
+    if (!m.produto) {
+      statusEl.textContent = 'ignorado (sem produto)';
+      statusEl.className = 'status nao-encontrado';
+      log.textContent += `IGNORADO: ${m.alvo.busca} — nenhum produto selecionado\n`;
+      continue;
+    }
+    try {
+      const prod = { ...m.produto };
+      const variations = prod.variations && prod.variations.length > 0
+        ? [...prod.variations]
+        : [{ size: 'Varejo', price: 0 }, { size: 'Atacado', price: 0 }];
+      variations[0] = { ...variations[0], price: m.alvo.novoVarejo };
+      const payload = { ...prod, variations };
+
+      const resp = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      statusEl.textContent = 'atualizado ✓';
+      statusEl.className = 'status ok';
+      log.textContent += `OK: ${prod.name} → R$ ${m.alvo.novoVarejo.toFixed(2)}\n`;
+    } catch (e) {
+      statusEl.textContent = 'erro';
+      statusEl.className = 'status erro';
+      log.textContent += `ERRO ao atualizar ${m.produto.name}: ${e.message}\n`;
+    }
+  }
+
+  // 2. Cria produtos novos
+  for (let idx = 0; idx < NOVOS.length; idx++) {
+    const n = NOVOS[idx];
+    const statusEl = document.getElementById('status-novo-' + idx);
+    if (n.nome.startsWith('(nome pendente')) {
+      statusEl.textContent = 'pulado — falta nome';
+      statusEl.className = 'status nao-encontrado';
+      log.textContent += `PULADO: item novo sem nome definitivo (varejo R$ ${n.varejo.toFixed(2)}) — edite o código e recarregue\n`;
+      continue;
+    }
+    try {
+      const payload = {
+        name: n.nome,
+        desc: "Produto de alta qualidade e durabilidade comercializado pela PAULO RENATO REPRESENTAÇÕES.",
+        images: [],
+        availableTypes: [],
+        variations: [
+          { size: "Varejo", price: n.varejo },
+          { size: "Atacado", price: n.atacado || 0 }
+        ]
+      };
+      const resp = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      statusEl.textContent = 'criado ✓';
+      statusEl.className = 'status ok';
+      log.textContent += `OK: novo produto "${n.nome}" criado\n`;
+    } catch (e) {
+      statusEl.textContent = 'erro';
+      statusEl.className = 'status erro';
+      log.textContent += `ERRO ao criar ${n.nome}: ${e.message}\n`;
+    }
+  }
+
+  log.textContent += "\nConcluído. Confira o catálogo no admin.html para validar.";
+  document.getElementById('btnAplicar').disabled = false;
+}
+</script>
+</body>
+</html>

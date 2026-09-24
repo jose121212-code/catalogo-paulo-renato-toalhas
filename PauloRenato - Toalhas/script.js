@@ -357,7 +357,6 @@ function openAdvancedNewProductModal() {
     imagensSelecionadas = []; // Reseta o array de uploads ilimitados
     document.getElementById('advName').value = '';
     document.getElementById('advDesc').value = '';
-    document.getElementById('advVarejo').value = '';
     document.getElementById('advAtacado').value = '';
     document.getElementById('preview-galeria').innerHTML = '';
     document.getElementById('advFiles').value = '';
@@ -374,9 +373,7 @@ async function saveAdvancedProduct() {
     const descricaoBreve = document.getElementById('advDesc').value.trim();
     
     // CORREÇÃO: Previne o erro de vírgula ao cadastrar novos produtos
-    const inputVarejo = document.getElementById('advVarejo').value;
     const inputAtacado = document.getElementById('advAtacado').value;
-    const varejo = parseFloat(inputVarejo.replace(',', '.')) || 0;
     const atacado = parseFloat(inputAtacado.replace(',', '.')) || 0;
 
     if (!nome) return alert("Digite o nome do produto.");
@@ -388,7 +385,6 @@ async function saveAdvancedProduct() {
         images: imagensSelecionadas,
         availableTypes: [],
         variations: [
-            { size: "Varejo", price: varejo },
             { size: "Atacado", price: atacado }
         ]
     };
@@ -440,31 +436,34 @@ async function editField(product, field) {
 // ==========================================
 let currentEditProductId = null; // Guarda qual produto estamos editando
 
-// 1. Abre a janelinha preenchendo com os preços atuais
-// 1. Abre a janelinha preenchendo com os preços atuais de forma segura
-
-
 // 2. Fecha a janelinha
 function closePriceModal() {
     document.getElementById('custom-price-modal').style.display = 'none';
     currentEditProductId = null;
 }
 
-// 1. Abre a janelinha preenchendo com os preços atuais de forma segura
+// Acha o preço "Atacado" certo mesmo em produtos antigos que ainda tenham
+// uma variação vazia/zerada sobrando
+function getAtacadoVariation(p) {
+    if (!Array.isArray(p.variations) || p.variations.length === 0) {
+        return { size: 'Atacado', price: 0 };
+    }
+    const nomeada = p.variations.find(v => (v.size || '').toLowerCase().includes('atacado'));
+    if (nomeada) return nomeada;
+    const comValor = p.variations.find(v => parseFloat(v.price) > 0);
+    if (comValor) return comValor;
+    return p.variations[0];
+}
+
+// 1. Abre a janelinha preenchendo com o preço atual de forma segura
 function editGridPrice(productId) {
     const p = products.find(prod => Number(prod.id) === Number(productId));
     if (!p) return;
 
     currentEditProductId = productId;
 
-    // Obtém com segurança as variações sem travar se alguma não existir
-    const varejoObj = (p.variations && p.variations[0]) ? p.variations[0] : { price: 0 };
-    const atacadoObj = (p.variations && p.variations[1]) ? p.variations[1] : { price: 0 };
+    const priceAtacado = Number(getAtacadoVariation(p).price) || 0;
 
-    const priceVarejo = Number(varejoObj.price) || 0;
-    const priceAtacado = Number(atacadoObj.price) || 0;
-
-    document.getElementById('edit-varejo-input').value = priceVarejo.toFixed(2).replace('.', ',');
     document.getElementById('edit-atacado-input').value = priceAtacado.toFixed(2).replace('.', ',');
 
     document.getElementById('custom-price-modal').style.display = 'flex';
@@ -483,16 +482,11 @@ async function saveCustomPrice() {
     const p = products.find(prod => Number(prod.id) === Number(currentEditProductId));
     if (!p) return;
 
-    const inputVarejo = document.getElementById('edit-varejo-input').value;
     const inputAtacado = document.getElementById('edit-atacado-input').value;
+    const novoPreco = parseFloat(inputAtacado.replace(',', '.')) || 0;
 
-    // Normaliza a estrutura de variações se estiver incompleta
-    if (!Array.isArray(p.variations)) p.variations = [];
-    if (!p.variations[0]) p.variations[0] = { size: "Varejo", price: 0 };
-    if (!p.variations[1]) p.variations[1] = { size: "Atacado", price: 0 };
-
-    p.variations[0].price = parseFloat(inputVarejo.replace(',', '.')) || 0;
-    p.variations[1].price = parseFloat(inputAtacado.replace(',', '.')) || 0;
+    // Substitui todas as variações por uma única, limpa: "Atacado"
+    p.variations = [{ size: "Atacado", price: novoPreco }];
 
     const btnSave = document.getElementById('save-price-btn');
     btnSave.innerText = "Salvando...";

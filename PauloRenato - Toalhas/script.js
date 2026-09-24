@@ -1,14 +1,12 @@
 let products = []; // populado via loadProductsFromBackend()
 
-// Encontra a variação "Atacado" do produto (única opção de preço exibida no site).
-// Se não achar pelo nome, usa a segunda posição do array (padrão antigo Varejo/Atacado);
-// se também não existir, usa a primeira posição disponível.
-function encontrarVariacaoAtacado(p) {
-    if (!p.variations || p.variations.length === 0) return null;
-    return p.variations.find(v => (v.size || '').toUpperCase() === 'ATACADO')
-        || p.variations[1]
-        || p.variations[0];
-}
+// Placeholder local (não depende de serviços externos como via.placeholder.com, que foi desativado)
+const SEM_FOTO_PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'>
+        <rect width='100%' height='100%' fill='#f0f0f0'/>
+        <text x='50%' y='50%' font-family='Montserrat, sans-serif' font-size='18' fill='#aaa' text-anchor='middle' dominant-baseline='middle'>Sem Foto</text>
+    </svg>`
+);
 
 // ==========================================
 // CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
@@ -36,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // CARREGAMENTO E SINCRONIZAÇÃO AUTOMÁTICA
 // ==========================================
 async function fetchProdutos() {
-    const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas", { cache: "no-store" });
+    const response = await fetch("https://backend-paulo-renato.onrender.com/api/toalhas", { cache: "no-store" });
     if (!response.ok) throw new Error("Resposta " + response.status);
     return response.json();
 }
@@ -76,20 +74,22 @@ function renderGrid() {
 
     products.forEach((p, idx) => {
         let precosHTML = "";
-        const atacado = encontrarVariacaoAtacado(p);
-        if (atacado) {
-            const precoNum = parseFloat(atacado.price) || 0;
-            precosHTML = `
-                <div class="price-container-grid">
+        if (p.variations && p.variations.length > 0) {
+            precosHTML = `<div class="price-container-grid">`;
+            p.variations.forEach((v, index) => {
+                const precoNum = parseFloat(v.price) || 0;
+                precosHTML += `
                     <div class="price-block" onclick="${isAdmin ? `event.stopPropagation(); editGridPrice(${p.id})` : ''}" style="${isAdmin ? 'cursor: pointer;' : ''}">
-                        <span class="price-label">Atacado</span>
+                        <span class="price-label">${v.size}</span>
                         <span class="price-value">R$ ${precoNum.toFixed(2).replace('.', ',')}${isAdmin ? ' ✏️' : ''}</span>
                     </div>
-                </div>
-            `;
+                    ${index === 0 ? '<span class="price-divider">|</span>' : ''}
+                `;
+            });
+            precosHTML += `</div>`;
         }
 
-        const imagemCapa = (p.images && p.images.length > 0) ? p.images[0] : "https://via.placeholder.com/320";
+        const imagemCapa = (p.images && p.images.length > 0) ? p.images[0] : SEM_FOTO_PLACEHOLDER;
 
         // Cria os botões de controle do Admin incluindo setas de ordenação
         grid.innerHTML += `
@@ -110,41 +110,6 @@ function renderGrid() {
     
     checkAdminSession();
 }
-
-// 2. NOVA FUNÇÃO: MOVER PRODUTO DE POSIÇÃO NA TELA E SALVAR NO BANCO
-async function moveProduct(currentIndex, direction) {
-    let targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    
-    // Valida as pontas da lista
-    if (targetIndex < 0 || targetIndex >= products.length) return;
-
-    // Troca de posição no array local
-    const temp = products[currentIndex];
-    products[currentIndex] = products[targetIndex];
-    products[targetIndex] = temp;
-
-    // Monta o payload mapeando a nova ordem sequencial (0, 1, 2...)
-    const listaOrdem = products.map((prod, index) => ({
-        id: prod.id,
-        ordem: index
-    }));
-
-    // Envia a nova ordem direto para a API reordenar no MySQL
-    try {
-        const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas/reordenar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ listaOrdem })
-        });
-
-        if (response.ok) {
-            renderGrid(); // Redesenha a tela instantaneamente com a nova ordem!
-        }
-    } catch (error) {
-        console.error("Erro ao reordenar produtos:", error);
-    }
-}
-
 
 // CORREÇÃO: Garante que roda o render da galeria assim que as fotos são lidas
 function handleMultipleImages(event) {
@@ -217,7 +182,7 @@ async function moveProduct(currentIndex, direction) {
     }));
 
     try {
-        const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas/reordenar", {
+        const response = await fetch("https://backend-paulo-renato.onrender.com/api/toalhas/reordenar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ listaOrdem })
@@ -265,17 +230,18 @@ function openModal(id) {
     const selectSize = document.getElementById('m-size');
     if (selectSize) {
         selectSize.innerHTML = '';
-        const atacado = encontrarVariacaoAtacado(p);
-        if (atacado) {
-            const option = document.createElement('option');
-            option.value = atacado.size || 'Atacado';
-            option.innerText = atacado.size || 'Atacado';
-            option.setAttribute('data-price', atacado.price);
+        if (p.variations && p.variations.length > 0) {
+            p.variations.forEach((v) => {
+                const option = document.createElement('option');
+                option.value = v.size; 
+                option.innerText = v.size;
+                option.setAttribute('data-price', v.price);
 
-            const imgIndex = p.images ? p.images.indexOf(atacado.image) : -1;
-            option.setAttribute('data-img-index', imgIndex !== -1 ? imgIndex : 0);
-            selectSize.appendChild(option);
-        }
+                const imgIndex = p.images ? p.images.indexOf(v.image) : -1; 
+                option.setAttribute('data-img-index', imgIndex !== -1 ? imgIndex : 0);
+                selectSize.appendChild(option);
+            });
+        } 
     }
 
     const containerColor = document.getElementById('container-color');
@@ -355,11 +321,10 @@ function updatePrice(origem) {
 
         if (nomeVariacao === "ATACADO") {
             if (inputQty) {
-                inputQty.disabled = true;
-                inputQty.style.opacity = "0.5";
-                inputQty.value = 1;
+                inputQty.disabled = false;
+                inputQty.style.opacity = "1";
             }
-            if (msgAtacado) msgAtacado.style.display = "block";
+            if (msgAtacado) msgAtacado.style.display = "none";
         } else {
             if (inputQty) {
                 inputQty.disabled = false;
@@ -392,6 +357,7 @@ function openAdvancedNewProductModal() {
     imagensSelecionadas = []; // Reseta o array de uploads ilimitados
     document.getElementById('advName').value = '';
     document.getElementById('advDesc').value = '';
+    document.getElementById('advVarejo').value = '';
     document.getElementById('advAtacado').value = '';
     document.getElementById('preview-galeria').innerHTML = '';
     document.getElementById('advFiles').value = '';
@@ -401,29 +367,6 @@ function closeAdvancedModal() {
     document.getElementById('advancedProductModal').style.display = 'none';
 }
 
-// Processa fotos ilimitadas simultâneas vindas da galeria do aparelho
-function handleMultipleImages(event) {
-    const files = Array.from(event.target.files);
-    const previewContainer = document.getElementById('preview-galeria');
-    previewContainer.innerHTML = ''; 
-    imagensSelecionadas = []; 
-
-    files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imagensSelecionadas.push(e.target.result); // Adiciona a string Base64 da foto
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.style.width = '60px';
-            img.style.height = '60px';
-            img.style.objectFit = 'cover';
-            img.style.borderRadius = '4px';
-            previewContainer.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
 // Salva e publica o produto contendo fotos ilimitadas e descrição customizada
 // Salva e publica o produto contendo fotos ilimitadas e descrição customizada
 async function saveAdvancedProduct() {
@@ -431,7 +374,9 @@ async function saveAdvancedProduct() {
     const descricaoBreve = document.getElementById('advDesc').value.trim();
     
     // CORREÇÃO: Previne o erro de vírgula ao cadastrar novos produtos
+    const inputVarejo = document.getElementById('advVarejo').value;
     const inputAtacado = document.getElementById('advAtacado').value;
+    const varejo = parseFloat(inputVarejo.replace(',', '.')) || 0;
     const atacado = parseFloat(inputAtacado.replace(',', '.')) || 0;
 
     if (!nome) return alert("Digite o nome do produto.");
@@ -443,12 +388,13 @@ async function saveAdvancedProduct() {
         images: imagensSelecionadas,
         availableTypes: [],
         variations: [
+            { size: "Varejo", price: varejo },
             { size: "Atacado", price: atacado }
         ]
     };
 
     try {
-        const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas", {
+        const response = await fetch("https://backend-paulo-renato.onrender.com/api/toalhas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(novoProduto)
@@ -476,7 +422,7 @@ async function editField(product, field) {
 
     product[field] = newValue.trim();
 
-    const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas", {
+    const response = await fetch("https://backend-paulo-renato.onrender.com/api/toalhas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(product)
@@ -488,22 +434,37 @@ async function editField(product, field) {
     }
 }
 
-// Edita o preço de Atacado ao clicar no bloco de preço do card
+// Edita os valores com um clique em cima do preço correspondente (Varejo ou Atacado)
 // ==========================================
 // MODAL CUSTOMIZADO DE EDIÇÃO DE PREÇOS
 // ==========================================
 let currentEditProductId = null; // Guarda qual produto estamos editando
 
-// 1. Abre a janelinha preenchendo com o preço Atacado atual
+// 1. Abre a janelinha preenchendo com os preços atuais
+// 1. Abre a janelinha preenchendo com os preços atuais de forma segura
+
+
+// 2. Fecha a janelinha
+function closePriceModal() {
+    document.getElementById('custom-price-modal').style.display = 'none';
+    currentEditProductId = null;
+}
+
+// 1. Abre a janelinha preenchendo com os preços atuais de forma segura
 function editGridPrice(productId) {
     const p = products.find(prod => Number(prod.id) === Number(productId));
     if (!p) return;
 
     currentEditProductId = productId;
 
-    const atacado = encontrarVariacaoAtacado(p);
-    const priceAtacado = (atacado && Number(atacado.price)) || 0;
+    // Obtém com segurança as variações sem travar se alguma não existir
+    const varejoObj = (p.variations && p.variations[0]) ? p.variations[0] : { price: 0 };
+    const atacadoObj = (p.variations && p.variations[1]) ? p.variations[1] : { price: 0 };
 
+    const priceVarejo = Number(varejoObj.price) || 0;
+    const priceAtacado = Number(atacadoObj.price) || 0;
+
+    document.getElementById('edit-varejo-input').value = priceVarejo.toFixed(2).replace('.', ',');
     document.getElementById('edit-atacado-input').value = priceAtacado.toFixed(2).replace('.', ',');
 
     document.getElementById('custom-price-modal').style.display = 'flex';
@@ -515,30 +476,30 @@ function closePriceModal() {
     currentEditProductId = null;
 }
 
-// 3. Salva o novo preço Atacado no Banco de Dados com segurança
+// 3. Salva os novos preços no Banco de Dados com segurança
 async function saveCustomPrice() {
     if (currentEditProductId === null) return;
 
     const p = products.find(prod => Number(prod.id) === Number(currentEditProductId));
     if (!p) return;
 
+    const inputVarejo = document.getElementById('edit-varejo-input').value;
     const inputAtacado = document.getElementById('edit-atacado-input').value;
-    const novoPreco = parseFloat(inputAtacado.replace(',', '.')) || 0;
 
+    // Normaliza a estrutura de variações se estiver incompleta
     if (!Array.isArray(p.variations)) p.variations = [];
-    let atacadoVar = p.variations.find(v => (v.size || '').toUpperCase() === 'ATACADO');
-    if (!atacadoVar) {
-        atacadoVar = { size: "Atacado", price: 0 };
-        p.variations.push(atacadoVar);
-    }
-    atacadoVar.price = novoPreco;
+    if (!p.variations[0]) p.variations[0] = { size: "Varejo", price: 0 };
+    if (!p.variations[1]) p.variations[1] = { size: "Atacado", price: 0 };
+
+    p.variations[0].price = parseFloat(inputVarejo.replace(',', '.')) || 0;
+    p.variations[1].price = parseFloat(inputAtacado.replace(',', '.')) || 0;
 
     const btnSave = document.getElementById('save-price-btn');
     btnSave.innerText = "Salvando...";
     btnSave.disabled = true;
 
     try {
-        const response = await fetch("https://paulo-renato-toalhas.onrender.com/api/toalhas", {
+        const response = await fetch("https://backend-paulo-renato.onrender.com/api/toalhas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(p)
@@ -561,7 +522,7 @@ async function saveCustomPrice() {
 // Remove o produto permanentemente do banco através do botão de lixeira no card
 async function deleteProductIntegrated(productId) {
     if (!confirm("Remover este produto permanentemente do catálogo?")) return;
-    const response = await fetch(`https://paulo-renato-toalhas.onrender.com/api/toalhas/${productId}`, { method: "DELETE" });
+    const response = await fetch(`https://backend-paulo-renato.onrender.com/api/toalhas/${productId}`, { method: "DELETE" });
     if (response.ok) {
         alert("Produto removido com sucesso.");
         location.reload();
